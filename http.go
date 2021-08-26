@@ -6,31 +6,36 @@ import (
 )
 
 // HTTPHandler constructs HTTP handler that will serve static data
-func HTTPHandler(path string) http.Handler {
-	assets, err := BuildAssets()
-	if err != nil {
-		panic(err)
+func (a AssetsHolder) HTTPHandler(path string) http.Handler {
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+	if !strings.HasSuffix(path, "/") {
+		path += "/"
 	}
 	return &handler{
-		AssetsHolder: *assets,
+		AssetsHolder: a,
 		RelativePath: path,
 	}
+}
+
+// HTTPHandlerFunc constructs HTTP handler function that will serve static data
+func (a AssetsHolder) HTTPHandlerFunc(path string) http.HandlerFunc {
+	return a.HTTPHandler(path).ServeHTTP
 }
 
 type handler struct {
 	AssetsHolder
 
-	RelativePath string // TODO relative path
+	RelativePath string
 }
 
 func (h handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	uri := req.RequestURI
-	if len(uri) > 1 {
-		if strings.HasPrefix(uri, "/") {
-			uri = uri[1:]
-		}
-		if h.Has(uri) {
-			asset, _ := h.Get(uri)
+	if len(uri) > len(h.RelativePath) && strings.HasPrefix(uri, h.RelativePath) {
+		uri = uri[len(h.RelativePath):]
+		asset, present := h.Get(uri)
+		if present {
 			w.Header().Set("Content-Type", asset.ContentType)
 			if asset.Gzipped {
 				w.Header().Set("Content-Encoding", "gzip")

@@ -5,12 +5,11 @@ import (
 	fa "github.com/mono83/embed-fa"
 	"log"
 	"net/http"
-	"strings"
 )
 
 func main() {
 	panic(http.ListenAndServe(":8080", &handler{
-		assets: fa.HTTPHandler(""),
+		assets: fa.MustBuildAssets().HTTPHandler("fa"),
 	}))
 }
 
@@ -25,11 +24,7 @@ func (h handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		_, _ = w.Write(index)
 		return
 	}
-	if strings.HasPrefix(uri, "/css/") || strings.HasPrefix(uri, "/js/") || strings.HasPrefix(uri, "/webfonts/") {
-		h.assets.ServeHTTP(w, req)
-		return
-	}
-	w.WriteHeader(404)
+	h.assets.ServeHTTP(w, req)
 }
 
 //go:embed index.html
